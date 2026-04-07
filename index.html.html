@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Incident Severity & Priority Matrix</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f3; color: #1a1a18; min-height: 100vh; padding: 2rem 1rem; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  p.sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  /* tokens */
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg-danger: #fcebeb; --bg-warning: #faeeda; --bg-info: #e6f1fb; --bg-success: #eaf3de; --bg-sec: #f1efe8;
+    --t: #1a1a18; --t2: #5f5e5a; --t3: #888780; --t-danger: #a32d2d; --t-warning: #854f0b; --t-info: #185fa5; --t-success: #3b6d11; --t-sec: #5f5e5a;
+    --b: #d3d1c7; --b2: #b4b2a9; --b-danger: #f09595; --b-warning: #fac775; --b-info: #85b7eb; --b-success: #97c459;
+    --r: 8px; --rl: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1c1c1a; color: #d4d2c8; }
+    :root {
+      --bg: #2c2c2a; --bg2: #242422; --bg-danger: #501313; --bg-warning: #412402; --bg-info: #042c53; --bg-success: #173404; --bg-sec: #2c2c2a;
+      --t: #d4d2c8; --t2: #9c9a92; --t3: #6e6c66; --t-danger: #f09595; --t-warning: #fac775; --t-info: #85b7eb; --t-success: #97c459; --t-sec: #9c9a92;
+      --b: #444441; --b2: #5f5e5a;
+    }
+  }
+
+  .card { background: var(--bg); border: 0.5px solid var(--b); border-radius: var(--rl); padding: 1rem 1.25rem; margin-bottom: 12px; }
+  .card-accent { border-color: var(--b2); }
+  .label { font-size: 13px; color: var(--t2); display: block; margin-bottom: 6px; }
+  .label-sm { font-size: 12px; color: var(--t3); margin-top: 8px; line-height: 1.6; }
+  .step-title { font-size: 13px; font-weight: 500; color: var(--t2); margin-bottom: 12px; }
+  select, .fake-select { width: 100%; font-size: 14px; padding: 6px 8px; background: var(--bg2); border: 0.5px solid var(--b); border-radius: var(--r); color: var(--t); font-family: inherit; cursor: pointer; }
+  select:focus { outline: none; border-color: var(--b2); }
+  .mt { margin-top: 12px; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; margin-top: 8px; color: var(--t); }
+  .chk input { cursor: pointer; }
+  .divider { border-top: 0.5px solid var(--b); margin: 14px 0; }
+  .interrupt-q { font-size: 13px; color: var(--t2); margin-bottom: 6px; }
+  .interrupt-hint { font-size: 12px; color: var(--t3); margin-bottom: 10px; line-height: 1.5; }
+  .btn-row { display: flex; gap: 8px; }
+  .int-btn { padding: 6px 20px; font-size: 13px; cursor: pointer; border-radius: var(--r); border: 0.5px solid var(--b); background: transparent; color: var(--t2); font-family: inherit; transition: all .15s; }
+  .int-btn.yes-active { border: 1.5px solid var(--b-danger); background: var(--bg-danger); color: var(--t-danger); font-weight: 500; }
+  .int-btn.no-active  { border: 1.5px solid var(--b); background: var(--bg2); color: var(--t); font-weight: 500; }
+
+  /* multiselect */
+  .ms-trigger { min-height: 36px; padding: 4px 8px; font-size: 14px; cursor: pointer; background: var(--bg2); border: 0.5px solid var(--b); border-radius: var(--r); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; position: relative; user-select: none; }
+  .ms-placeholder { color: var(--t3); font-size: 13px; }
+  .ms-arrow { margin-left: auto; color: var(--t3); font-size: 11px; padding-left: 6px; }
+  .ms-tag { background: var(--bg); border: 0.5px solid var(--b); border-radius: 6px; padding: 2px 8px; font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--t); }
+  .ms-tag-x { cursor: pointer; color: var(--t3); font-weight: 500; margin-left: 2px; }
+  .ms-tag-x:hover { color: var(--t-danger); }
+  .ms-dropdown { position: absolute; z-index: 100; top: calc(100% + 4px); left: 0; right: 0; background: var(--bg); border: 0.5px solid var(--b); border-radius: var(--r); max-height: 220px; overflow-y: auto; }
+  .ms-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; align-items: center; border-bottom: 0.5px solid var(--b); color: var(--t); }
+  .ms-item:hover { background: var(--bg2); }
+  .ms-item.sel { background: var(--bg2); }
+  .ms-check { margin-right: 8px; font-size: 12px; }
+  .badge { font-size: 11px; font-weight: 500; margin-left: 6px; }
+  .tier-e { color: var(--t-danger); } .tier-c { color: var(--t-warning); } .tier-l { color: var(--t-info); }
+  .crit-critical { color: var(--t-danger); } .crit-major { color: var(--t-warning); } .crit-minor { color: var(--t-info); } .crit-low { color: var(--t-sec); }
+
+  /* result */
+  .bars { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: var(--t2); }
+  .bar-label span:last-child { font-weight: 500; color: var(--t); }
+  .bar-track { background: var(--bg2); border-radius: 4px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+  .bar-hint { font-size: 11px; color: var(--t3); margin-top: 4px; }
+  .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .score-cell { background: var(--bg2); border-radius: var(--r); padding: 10px; text-align: center; }
+  .score-cell-label { font-size: 11px; color: var(--t2); margin-bottom: 6px; }
+  .score-big { font-size: 22px; font-weight: 500; }
+  .pill { padding: 2px 10px; border-radius: 8px; font-weight: 500; font-size: 13px; display: inline-block; }
+  .pill-danger  { background: var(--bg-danger);  color: var(--t-danger); }
+  .pill-warning { background: var(--bg-warning); color: var(--t-warning); }
+  .pill-info    { background: var(--bg-info);    color: var(--t-info); }
+  .pill-success { background: var(--bg-success); color: var(--t-success); }
+  .pill-sec     { background: var(--bg-sec);     color: var(--t-sec); }
+  .alert { border-radius: var(--r); padding: 10px 14px; font-size: 13px; margin-bottom: 8px; }
+  .alert-danger  { background: var(--bg-danger);  border: 0.5px solid var(--b-danger);  color: var(--t-danger); }
+  .alert-warning { background: var(--bg-warning); border: 0.5px solid var(--b-warning); color: var(--t-warning); }
+  .alert-sec     { background: var(--bg-sec);     border: 0.5px solid var(--b);         color: var(--t-sec); }
+  .breakdown { font-size: 12px; color: var(--t3); margin-bottom: 16px; line-height: 1.8; }
+  .breakdown strong { color: var(--t2); }
+  .legend { margin-top: 12px; border-top: 0.5px solid var(--b); padding-top: 12px; font-size: 12px; color: var(--t3); line-height: 2; }
+  .legend strong { color: var(--t2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Incident severity & priority matrix</h1>
+  <p class="sub">Fill in all steps to calculate the severity, priority, and whether to interrupt the current sprint.</p>
+  <div id="root"></div>
+</div>
+
+<script type="text/babel">
+const { useState } = React;
+
+const CUSTOMERS = [
+  { id:"c1",  name:"Acme Corp",       tier:"enterprise" },
+  { id:"c2",  name:"Globex",          tier:"enterprise" },
+  { id:"c3",  name:"Initech",         tier:"corporate"  },
+  { id:"c4",  name:"Umbrella Ltd",    tier:"corporate"  },
+  { id:"c5",  name:"Hooli",           tier:"corporate"  },
+  { id:"c6",  name:"Pied Piper",      tier:"lite"       },
+  { id:"c7",  name:"Dunder Mifflin",  tier:"lite"       },
+  { id:"c8",  name:"Vandelay Ind.",   tier:"lite"       },
+];
+const TIER_META = {
+  enterprise:{ label:"Enterprise", impactBonus:3, repBonus:3, cls:"tier-e" },
+  corporate: { label:"Corporate",  impactBonus:2, repBonus:2, cls:"tier-c" },
+  lite:      { label:"Lite",       impactBonus:1, repBonus:1, cls:"tier-l" },
+};
+const FEATURES = [
+  { id:"f1",  name:"Payments — Checkout",           area:"Payments",    criticality:"critical" },
+  { id:"f2",  name:"Payments — Refunds",            area:"Payments",    criticality:"critical" },
+  { id:"f3",  name:"Authentication — Login / SSO",  area:"Auth",        criticality:"critical" },
+  { id:"f4",  name:"Authentication — MFA",          area:"Auth",        criticality:"major"    },
+  { id:"f5",  name:"Communications — Email sending",area:"Comms",       criticality:"major"    },
+  { id:"f6",  name:"Communications — Templates",    area:"Comms",       criticality:"minor"    },
+  { id:"f7",  name:"Reporting — Dashboard",         area:"Reporting",   criticality:"major"    },
+  { id:"f8",  name:"Reporting — Exports",           area:"Reporting",   criticality:"minor"    },
+  { id:"f9",  name:"User Management — Roles",       area:"User Mgmt",   criticality:"major"    },
+  { id:"f10", name:"User Management — Profile",     area:"User Mgmt",   criticality:"low"      },
+  { id:"f11", name:"Onboarding — Setup wizard",     area:"Onboarding",  criticality:"minor"    },
+  { id:"f12", name:"Settings — Integrations",       area:"Settings",    criticality:"minor"    },
+  { id:"f13", name:"Settings — Notifications",      area:"Settings",    criticality:"low"      },
+];
+const CRIT_META = {
+  critical:{ label:"Critical", score:4, cls:"crit-critical" },
+  major:   { label:"Major",    score:3, cls:"crit-major"    },
+  minor:   { label:"Minor",    score:2, cls:"crit-minor"    },
+  low:     { label:"Low",      score:1, cls:"crit-low"      },
+};
+const INCIDENT_TYPES = [
+  { id:"security",   label:"Security / data breach",             impactBonus:0, repBonus:4 },
+  { id:"compliance", label:"Compliance / legal exposure",        impactBonus:1, repBonus:3 },
+  { id:"down",       label:"Service unavailability / site down", impactBonus:3, repBonus:2 },
+  { id:"data",       label:"Data integrity / data loss",         impactBonus:2, repBonus:2 },
+  { id:"perf",       label:"Performance degradation",            impactBonus:1, repBonus:1 },
+  { id:"app",        label:"Application / feature malfunction",  impactBonus:0, repBonus:0 },
+  { id:"infra",      label:"Infrastructure / platform issue",    impactBonus:1, repBonus:1 },
+  { id:"third",      label:"Third-party / integration failure",  impactBonus:0, repBonus:0 },
+];
+const FUNC_IMPACT = [
+  { id:"blocked", label:"Completely blocked — no workaround",          score:4 },
+  { id:"severe",  label:"Severely degraded — poor workaround",         score:3 },
+  { id:"partial", label:"Partially impacted — reasonable workaround",  score:2 },
+  { id:"minor",   label:"Minor / cosmetic",                            score:1 },
+];
+const SCOPE = [
+  { id:"all",     label:"All customers / all users",       impactScore:4, repScore:4 },
+  { id:"many",    label:"Multiple customers — widespread", impactScore:3, repScore:3 },
+  { id:"few",     label:"Multiple users — small group",    impactScore:2, repScore:2 },
+  { id:"one",     label:"Single user",                     impactScore:1, repScore:1 },
+  { id:"unknown", label:"Unknown",                         impactScore:2, repScore:2 },
+];
+const SEV_PRI_COLOR = {
+  "SEV-1":"danger","SEV-2":"warning","SEV-3":"info","SEV-4":"success",
+  P1:"danger",P2:"warning",P3:"info",P4:"success",P5:"sec"
+};
+
+function Pill({ label }) {
+  return <span className={`pill pill-${SEV_PRI_COLOR[label]||"sec"}`}>{label}</span>;
+}
+function Bar({ value, color }) {
+  return (
+    <div className="bar-track">
+      <div className="bar-fill" style={{ width:`${value*10}%`, background:color }} />
+    </div>
+  );
+}
+function TierBadge({ tier }) {
+  const m = TIER_META[tier];
+  return <span className={`badge ${m.cls}`}>{m.label}</span>;
+}
+function CritBadge({ crit }) {
+  const m = CRIT_META[crit];
+  return <span className={`badge ${m.cls}`}>{m.label}</span>;
+}
+
+function MultiSelect({ items, selected, onToggle, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const sel = selected.map(id => items.find(x => x.id === id)).filter(Boolean);
+  return (
+    <div style={{ position:"relative" }}>
+      <div className="ms-trigger" onClick={() => setOpen(o => !o)}>
+        {sel.length === 0
+          ? <span className="ms-placeholder">{placeholder}</span>
+          : sel.map(x => (
+            <span key={x.id} className="ms-tag">
+              {x.name}
+              {x.tier && <TierBadge tier={x.tier} />}
+              {x.criticality && <CritBadge crit={x.criticality} />}
+              <span className="ms-tag-x" onClick={e => { e.stopPropagation(); onToggle(x.id); }}>×</span>
+            </span>
+          ))
+        }
+        <span className="ms-arrow">{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div className="ms-dropdown">
+          {items.map(x => (
+            <div key={x.id} className={`ms-item${selected.includes(x.id) ? " sel" : ""}`} onClick={() => onToggle(x.id)}>
+              <span className="ms-check" style={{ color: selected.includes(x.id) ? "var(--t-success)" : "var(--t3)" }}>
+                {selected.includes(x.id) ? "✓" : "○"}
+              </span>
+              {x.name}
+              {x.tier && <TierBadge tier={x.tier} />}
+              {x.criticality && <CritBadge crit={x.criticality} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [itype, setItype]   = useState("");
+  const [func, setFunc]     = useState("");
+  const [scope, setScope]   = useState("");
+  const [selC, setSelC]     = useState([]);
+  const [selF, setSelF]     = useState([]);
+  const [security, setSec]  = useState(false);
+  const [legal, setLegal]   = useState(false);
+  const [goLive, setGoLive] = useState(false);
+  const [critical, setCrit] = useState(false);
+  const [interrupt, setInt] = useState(null);
+
+  const toggleC = id => setSelC(s => s.includes(id) ? s.filter(x=>x!==id) : [...s,id]);
+  const toggleF = id => setSelF(s => s.includes(id) ? s.filter(x=>x!==id) : [...s,id]);
+
+  const itObj = INCIDENT_TYPES.find(x=>x.id===itype);
+  const fObj  = FUNC_IMPACT.find(x=>x.id===func);
+  const sObj  = SCOPE.find(x=>x.id===scope);
+  const custs = selC.map(id=>CUSTOMERS.find(x=>x.id===id)).filter(Boolean);
+  const feats = selF.map(id=>FEATURES.find(x=>x.id===id)).filter(Boolean);
+
+  const highTier = custs.reduce((b,c) => {
+    const o={enterprise:3,corporate:2,lite:1};
+    return (!b||o[c.tier]>o[b])?c.tier:b;
+  }, null);
+  const highCrit = feats.reduce((b,f) => {
+    const o={critical:4,major:3,minor:2,low:1};
+    return (!b||o[f.criticality]>o[b])?f.criticality:b;
+  }, null);
+
+  const tierM = highTier ? TIER_META[highTier] : null;
+  const critScore = highCrit ? CRIT_META[highCrit].score : 0;
+  const ready = itype && func && scope && custs.length>0 && feats.length>0;
+
+  let imp=0, rep=0;
+  if (ready) {
+    imp = fObj.score + sObj.impactScore + tierM.impactBonus + itObj.impactBonus + critScore;
+    rep = sObj.repScore + tierM.repBonus + itObj.repBonus;
+    if (goLive)          imp += 2;
+    if (critical)        rep += 2;
+    if (security||legal) { imp += 3; rep += 3; }
+    imp = Math.min(10, imp);
+    rep = Math.min(10, rep);
+  }
+  const combined = ready ? Math.round((imp+rep)/2) : 0;
+
+  const sev = !ready ? null
+    : (security||legal) ? "SEV-1"
+    : combined>=8 ? "SEV-1"
+    : combined>=6 ? "SEV-2"
+    : combined>=4 ? "SEV-3"
+    : "SEV-4";
+
+  const isP5 = highTier==="lite" && (scope==="one"||func==="minor") && combined<=4 && !security && !legal && !goLive && !critical;
+  let pri = !sev ? null : sev==="SEV-1"?"P1":sev==="SEV-2"?"P2":sev==="SEV-3"?"P3":isP5?"P5":"P4";
+  if ((goLive||critical) && pri && pri!=="P1") {
+    const up={P2:"P1",P3:"P2",P4:"P3",P5:"P3"};
+    pri = up[pri]||pri;
+  }
+
+  return (
+    <div>
+      <div className="card">
+        <p className="step-title">Step 1 — Incident type</p>
+        <label className="label">What kind of incident is this?</label>
+        <select value={itype} onChange={e=>{setItype(e.target.value);setSec(e.target.value==="security");}}>
+          <option value="">Select incident type…</option>
+          {INCIDENT_TYPES.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}
+        </select>
+      </div>
+
+      <div className="card">
+        <p className="step-title">Step 2 — Affected customers</p>
+        <label className="label">Select all affected customers — tier and score assigned automatically</label>
+        <MultiSelect items={CUSTOMERS} selected={selC} onToggle={toggleC} placeholder="Select customers…" />
+        {custs.length>0 && <p className="label-sm">Highest tier: <strong>{tierM?.label}</strong> — impact +{tierM?.impactBonus}, reputation +{tierM?.repBonus}</p>}
+      </div>
+
+      <div className="card">
+        <p className="step-title">Step 3 — Affected features</p>
+        <label className="label">Select all affected features — criticality score assigned automatically</label>
+        <MultiSelect items={FEATURES} selected={selF} onToggle={toggleF} placeholder="Select features…" />
+        {feats.length>0 && <p className="label-sm">Highest criticality: <strong>{CRIT_META[highCrit]?.label}</strong> — impact +{critScore}</p>}
+      </div>
+
+      <div className="card">
+        <p className="step-title">Step 4 — Functional impact & scope</p>
+        <label className="label">How blocked is the user?</label>
+        <select value={func} onChange={e=>setFunc(e.target.value)}>
+          <option value="">Select impact level…</option>
+          {FUNC_IMPACT.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}
+        </select>
+        <div className="mt">
+          <label className="label">How many users / customers are affected?</label>
+          <select value={scope} onChange={e=>setScope(e.target.value)}>
+            <option value="">Select scope…</option>
+            {SCOPE.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="card">
+        <p className="step-title">Step 5 — Escalation flags & sprint decision</p>
+        <label className="chk"><input type="checkbox" checked={security} onChange={e=>setSec(e.target.checked)} />Security event (suspected or confirmed breach)</label>
+        <label className="chk"><input type="checkbox" checked={legal}    onChange={e=>setLegal(e.target.checked)} />Legal / compliance exposure</label>
+        <label className="chk"><input type="checkbox" checked={goLive}   onChange={e=>setGoLive(e.target.checked)} />Blocks a customer go-live or launch</label>
+        <label className="chk"><input type="checkbox" checked={critical} onChange={e=>setCrit(e.target.checked)} />Strategic / critical account flag</label>
+        <div className="divider"/>
+        <p className="interrupt-q">Should this interrupt the current sprint?</p>
+        <p className="interrupt-hint">Yes = pull into the active sprint immediately, displacing lower-priority work. No = follows normal prioritization queue.</p>
+        <div className="btn-row">
+          {["Yes","No"].map(opt=>(
+            <button key={opt} className={`int-btn${interrupt===opt?(opt==="Yes"?" yes-active":" no-active"):""}`} onClick={()=>setInt(opt)}>{opt}</button>
+          ))}
+        </div>
+      </div>
+
+      {ready && (
+        <div className="card card-accent">
+          <p className="step-title">Result</p>
+          <div className="breakdown">
+            <strong>Score breakdown</strong><br/>
+            Functional impact: +{fObj.score} · Scope: +{sObj.impactScore} · Tier ({tierM?.label}): +{tierM?.impactBonus} · Feature criticality ({CRIT_META[highCrit]?.label}): +{critScore} · Incident type: +{itObj.impactBonus}
+            {goLive?" · Go-live blocker: +2":""}
+            {(security||legal)?" · Security/legal override: +3":""}
+          </div>
+          <div className="bars">
+            <div>
+              <div className="bar-label"><span>Impact score</span><span>{imp}/10</span></div>
+              <Bar value={imp} color="var(--t-warning)" />
+            </div>
+            <div>
+              <div className="bar-label"><span>Reputation score</span><span>{rep}/10</span></div>
+              <Bar value={rep} color="var(--t-danger)" />
+            </div>
+          </div>
+          <div className="score-grid">
+            <div className="score-cell"><p className="score-cell-label">Combined</p><p className="score-big">{combined}/10</p></div>
+            <div className="score-cell"><p className="score-cell-label">Severity</p><Pill label={sev} /></div>
+            <div className="score-cell"><p className="score-cell-label">Priority</p><Pill label={pri} /></div>
+            <div className="score-cell">
+              <p className="score-cell-label">Interrupt sprint?</p>
+              <span style={{ fontSize:13, fontWeight:500, color: interrupt==="Yes"?"var(--t-danger)":interrupt==="No"?"var(--t-sec)":"var(--t3)" }}>
+                {interrupt ?? "—"}
+              </span>
+            </div>
+          </div>
+          {(security||legal) && <div className="alert alert-danger">⚠ Security or legal flag — escalate immediately to Security/Legal lead. Forced SEV-1 / P1.</div>}
+          {(goLive||critical) && !(security||legal) && <div className="alert alert-warning">Priority bumped one level — go-live blocker or strategic account flag active.</div>}
+          {pri==="P5" && <div className="alert alert-sec">P5 — Long-tail backlog. Lite tier, low impact, single user or minor issue. No sprint interrupt. Address opportunistically.</div>}
+          <div className="legend">
+            <strong>SEV-1 / P1</strong> — Combined ≥ 8 or security/legal flag. Immediate response, interrupt sprint, exec awareness.<br/>
+            <strong>SEV-2 / P2</strong> — Combined 6–7. Urgent, interrupt sprint, named owner assigned within hours.<br/>
+            <strong>SEV-3 / P3</strong> — Combined 4–5. Pull into next sprint cycle, response within days.<br/>
+            <strong>SEV-4 / P4</strong> — Combined 2–3. Scheduled backlog fix, no sprint interrupt.<br/>
+            <strong>P5</strong> — Lite tier + single user or minor issue + low score. Opportunistic backlog only.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
